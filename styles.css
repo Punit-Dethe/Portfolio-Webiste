@@ -5,7 +5,14 @@ body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", sans-serif;
   color: #0c1022;
-  background: #5656E9;
+  /* Base brand color */
+  background-color: #5656E9;
+  /* Dotted halftone overlay (two offset dot grids) */
+  background-image:
+    radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
+  background-size: 10px 6px, 10px 6px;
+  background-position: 0 0, 5px 3px;
 }
 
 :root{
@@ -24,8 +31,7 @@ body {
   top: 0;
   height: 56px;
   border-bottom: 2px solid #000;
-  background: rgba(255,255,255,0.12);
-  backdrop-filter: blur(2px);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -54,21 +60,14 @@ body {
   color: #000;
   font-weight: 700;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   border: 2px solid #000;
-  box-shadow: 0 2px 0 #000;
+  /* Retro bottom-left hard shadow */
+  box-shadow: -3px 3px 0 #000;
 }
 
-/* Bag sticker */
-.bag-sticker {
-  position: fixed;
-  right: 22px;
-  top: 110px;
-  text-decoration: none; color: inherit;
-  display: grid; justify-items: center; gap: 6px;
-}
-.bag-sticker .sticker-icon { width: 92px; height: 92px; filter: drop-shadow(0 3px 0 #000); }
-.bag-sticker svg { width: 92px; height: 92px; }
+ 
+ 
 
 /* Board */
 .board { padding: 40px 24px 120px 120px; height: calc(100vh - 56px); overflow: hidden; }
