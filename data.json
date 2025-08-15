@@ -1,0 +1,26 @@
+{
+  "projects": [
+    {
+      "title": "Smart Slide Browser",
+      "tags": ["Project", "Student", "Slides", "Search"]
+    },
+    {
+      "title": "AI Menu System",
+      "tags": ["AI/ML", "Prototype", "Computer Vision"]
+    }
+  ],
+  "experience": [
+    {
+      "title": "Machine Learning Intern",
+      "tags": ["Internship", "AI/ML", "Dates TBD"]
+    },
+    {
+      "title": "Full Stack Developer",
+      "tags": ["Web", "Backend+Frontend", "Dates TBD"]
+    },
+    {
+      "title": "Web Developer",
+      "tags": ["Frontend", "HTML/CSS/JS", "Dates TBD"]
+    }
+  ]
+}
