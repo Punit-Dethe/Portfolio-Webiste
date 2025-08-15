@@ -2,6 +2,18 @@
 (function(){
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
+  const getVarXY = (el) => {
+    const cs = getComputedStyle(el);
+    return [parseFloat(cs.getPropertyValue('--x')||'0'), parseFloat(cs.getPropertyValue('--y')||'0')];
+  };
+  const setVarXY = (el, x, y) => {
+    el.style.setProperty('--x', x + 'px');
+    el.style.setProperty('--y', y + 'px');
+  };
+  const debounce = (fn, ms = 150) => {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  };
 
   // Z-index manager
   let zTop = 10;
@@ -34,6 +46,10 @@
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
+      // After drag ends, resolve overlaps and clamp inside container for notes only
+      if (target.classList.contains('note')) {
+        resolveNotePosition(target);
+      }
       persistPosition(target);
     };
     h.addEventListener('pointerdown', down);
@@ -80,19 +96,62 @@
     const notes = qsa('.note');
     const n = notes.length;
     if(!n) return;
-    const viewport = Math.min(window.innerWidth || 1200, window.innerHeight || 800);
-    const radiusBase = Math.max(180, Math.min(240, viewport * 0.25));
-    const angle0 = Math.random() * Math.PI * 2;
-    const golden = Math.PI * (3 - Math.sqrt(5)); // ~2.399 rad, good spread
+
+    const container = qs('.notes');
+    const cw = (container?.clientWidth) || window.innerWidth || 1200;
+    const ch = (container?.clientHeight) || (window.innerHeight - 100) || 700;
+    const centerX = cw / 2;
+
+    // Determine baseline top in px when --y is 0
+    let baseTop = 0;
+    if (notes[0]) {
+      const prev = notes[0].style.getPropertyValue('--y');
+      notes[0].style.setProperty('--y', '0px');
+      baseTop = parseFloat(getComputedStyle(notes[0]).top) || 0;
+      if (prev) notes[0].style.setProperty('--y', prev);
+    }
+
+    const golden = Math.PI * (3 - Math.sqrt(5)); // ~2.399 rad
+    const startR = Math.max(80, Math.min(160, Math.min(cw, ch) * 0.18));
+    const placed = [];
+    const margin = 12; // spacing between notes
+
+    const collides = (rect) => placed.some(p => !(
+      rect.right + margin < p.left ||
+      rect.left - margin > p.right ||
+      rect.bottom + margin < p.top ||
+      rect.top - margin > p.bottom
+    ));
+
+    const rectFor = (note, x, y) => {
+      const w = note.offsetWidth || note.getBoundingClientRect().width || 300;
+      const h = note.offsetHeight || note.getBoundingClientRect().height || 180;
+      const left = Math.round(centerX + x - w / 2);
+      const top = Math.round(baseTop + y);
+      return { left, top, right: left + w, bottom: top + h, w, h };
+    };
+
     notes.forEach((note, i) => {
-      const ang = angle0 + i * golden;
-      const r = radiusBase * (0.75 + 0.25 * (i / Math.max(1, n-1)));
-      const x = Math.round(Math.cos(ang) * r);
-      const y = Math.round(Math.sin(ang) * r * 0.6 + 80); // push down from 20% baseline
-      note.style.setProperty('--x', x + 'px');
-      note.style.setProperty('--y', y + 'px');
-      const rot = (Math.random() * 4 - 2).toFixed(2); // -2deg..2deg
+      const yBias = note.classList.contains('note-yellow') ? 200 : 0; // push yellow much further down
+      let k = 0;
+      let chosen = null;
+      while (k < 500) {
+        const ang = (i * 0.6 + k) * golden;
+        const r = startR + k * 8; // expand spiral
+        const x = Math.round(Math.cos(ang) * r);
+        const y0 = Math.round(Math.sin(ang) * r * 0.10 - 10); // very top-biased, minimal vertical amplitude
+        const y = y0 + yBias;
+        const rect = rectFor(note, x, y);
+        const inside = rect.left >= 16 && rect.right <= cw - 16 && rect.top >= 0 && rect.bottom <= ch - 16;
+        if (inside && !collides(rect)) { chosen = { x, y, rect }; break; }
+        k++;
+      }
+      if (!chosen) { chosen = { x: 0, y: 8 + yBias, rect: rectFor(note, 0, 8 + yBias) }; }
+      note.style.setProperty('--x', chosen.x + 'px');
+      note.style.setProperty('--y', chosen.y + 'px');
+      const rot = (Math.random() * 2 - 1).toFixed(2); // keep slight rotation
       note.style.setProperty('--r', rot + 'deg');
+      placed.push(chosen.rect);
     });
   }
 
@@ -204,6 +263,12 @@
   // Initial state
   scatterNotes();
   applyPositions();
+  resolveAllNotes();
   applyOpenState();
   loadData();
+
+  // Keep notes non-overlapping on resize
+  window.addEventListener('resize', debounce(() => {
+    resolveAllNotes();
+  }, 180));
 })();
