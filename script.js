@@ -17,6 +17,8 @@
     };
     const down = (e) => {
       if(e.button !== 0 && e.pointerType !== 'touch') return; // primary only
+      // Do not start drag when interacting with controls/links/inputs inside the handle
+      if (e.target.closest('.control') || e.target.closest('button, a, input, textarea, select, [role="button"]')) return;
       bringToFront(target);
       target.focus?.();
       const [x, y] = get();
@@ -46,8 +48,8 @@
 
     const closeBtn = qs('.control.close', w);
     const minBtn = qs('.control.minimize', w);
-    closeBtn?.addEventListener('click', () => { w.hidden = true; saveOpenState(w.id, false); });
-    minBtn?.addEventListener('click', () => { w.classList.toggle('minimized'); });
+    closeBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.hidden = true; saveOpenState(w.id, false); });
+    minBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.classList.toggle('minimized'); });
     handle?.addEventListener('dblclick', () => w.classList.toggle('minimized'));
   });
 
@@ -69,9 +71,30 @@
   qsa('.note').forEach(note => {
     const bar = qs('.note-bar', note) || note;
     makeDraggable(note, bar);
-    note.addEventListener('mouseenter', () => bringToFront(note));
-    note.addEventListener('focusin', () => bringToFront(note));
+    // Bring to front only on click (like windows), not on hover
+    note.addEventListener('mousedown', () => bringToFront(note));
   });
+
+  // Scatter notes around the center-ish area on load to avoid heavy overlap
+  function scatterNotes(){
+    const notes = qsa('.note');
+    const n = notes.length;
+    if(!n) return;
+    const viewport = Math.min(window.innerWidth || 1200, window.innerHeight || 800);
+    const radiusBase = Math.max(180, Math.min(240, viewport * 0.25));
+    const angle0 = Math.random() * Math.PI * 2;
+    const golden = Math.PI * (3 - Math.sqrt(5)); // ~2.399 rad, good spread
+    notes.forEach((note, i) => {
+      const ang = angle0 + i * golden;
+      const r = radiusBase * (0.75 + 0.25 * (i / Math.max(1, n-1)));
+      const x = Math.round(Math.cos(ang) * r);
+      const y = Math.round(Math.sin(ang) * r * 0.6 + 80); // push down from 20% baseline
+      note.style.setProperty('--x', x + 'px');
+      note.style.setProperty('--y', y + 'px');
+      const rot = (Math.random() * 4 - 2).toFixed(2); // -2deg..2deg
+      note.style.setProperty('--r', rot + 'deg');
+    });
+  }
 
   // Keyboard nudge for focused note or window
   document.addEventListener('keydown', (e) => {
@@ -179,6 +202,7 @@
   }
 
   // Initial state
+  scatterNotes();
   applyPositions();
   applyOpenState();
   loadData();
