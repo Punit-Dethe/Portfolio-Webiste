@@ -72,15 +72,15 @@ body {
 
 /* Board */
 .board { padding: 40px 24px 120px 120px; height: calc(100vh - 44px); overflow: hidden; }
-.notes { position: relative; min-height: 100%; }
+.notes { position: relative; height: 100%; }
 
 /* Windows (desktop-like) */
-.windows { position: relative; min-height: 40vh; }
+.windows { position: relative; height: 100%; }
 .window {
   position: absolute;
   left: calc(50% + var(--x));
-  top: calc(20% + var(--y));
-  transform: translateX(-50%);
+  top: calc(50% + var(--y));
+  transform: translate(-50%, -50%);
   width: var(--w, 640px);
   background: #fff;
   border: 3px solid #000;
@@ -182,8 +182,8 @@ body {
   width: var(--w);
   position: absolute;
   left: calc(50% + var(--x));
-  top: calc(0% + var(--y));
-  transform: translateX(-50%) rotate(var(--r, 0deg));
+  top: calc(50% + var(--y));
+  transform: translate(-50%, -50%) rotate(var(--r, 0deg));
   background: #ffd1e3;
   border: 3px solid #000;
   box-shadow: var(--note-shadow);
@@ -219,7 +219,7 @@ body {
 
 /* Borders & comic-like shadows */
 .note { transition: transform .2s ease, box-shadow .2s ease; }
-.note:focus-within, .note:hover { transform: translateX(-50%) rotate(0deg) scale(1.01); box-shadow: 0 2px 0 #000, 0 14px 0 rgba(0,0,0,0.5); }
+.note:focus-within, .note:hover { transform: translate(-50%, -50%) rotate(0deg) scale(1.01); box-shadow: 0 2px 0 #000, 0 14px 0 rgba(0,0,0,0.5); }
 
 .note, .window { touch-action: none; /* enable smooth pointer drag without scrolling */ }
 

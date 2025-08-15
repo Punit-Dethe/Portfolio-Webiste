@@ -19,6 +19,28 @@
   let zTop = 10;
   const bringToFront = (el) => { el.style.zIndex = ++zTop; };
 
+  // Simple helpers
+  const rand = (min, max) => Math.random() * (max - min) + min;
+
+  // Place a window near the center of its container (.windows) with light jitter
+  function placeWindowNearCenter(w){
+    const container = qs('.windows') || document.body;
+    const crect = container.getBoundingClientRect();
+    const cw = crect.width || container.clientWidth || window.innerWidth || 1200;
+    const ch = crect.height || container.clientHeight || window.innerHeight || 800;
+    const hJitter = 120; // stronger left/right jitter in px
+    const vUp = 120;     // push further above center
+    const vJitter = 12;  // small vertical jitter
+    const jx = Math.round(rand(-hJitter, hJitter));
+    const jy = -vUp + Math.round(rand(-vJitter, vJitter));
+    const viewportCX = (window.innerWidth || cw) / 2;
+    const viewportCY = (window.innerHeight || ch) / 2;
+    // var(--x), var(--y) are offsets from container center (CSS uses top: 50% and translate(-50%, -50%))
+    const varX = Math.round(viewportCX - (crect.left + cw / 2) + jx);
+    const varY = Math.round(viewportCY - (crect.top + ch / 2) + jy);
+    setVarXY(w, varX, varY);
+  }
+
   // Generic drag using CSS custom props --x and --y
   function makeDraggable(target, handle){
     const h = handle || target;
@@ -46,11 +68,6 @@
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
-      // After drag ends, resolve overlaps and clamp inside container for notes only
-      if (target.classList.contains('note')) {
-        resolveNotePosition(target);
-      }
-      persistPosition(target);
     };
     h.addEventListener('pointerdown', down);
   }
@@ -64,9 +81,12 @@
 
     const closeBtn = qs('.control.close', w);
     const minBtn = qs('.control.minimize', w);
-    closeBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.hidden = true; saveOpenState(w.id, false); });
+    closeBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.hidden = true; });
     minBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.classList.toggle('minimized'); });
     handle?.addEventListener('dblclick', () => w.classList.toggle('minimized'));
+
+    // If visible on load, drop it near center
+    if (!w.hidden) placeWindowNearCenter(w);
   });
 
   // Dock actions
@@ -78,7 +98,7 @@
       win.hidden = false;
       bringToFront(win);
       win.classList.remove('minimized');
-      saveOpenState(id, true);
+      placeWindowNearCenter(win);
       win.focus();
     });
   });
@@ -91,30 +111,38 @@
     note.addEventListener('mousedown', () => bringToFront(note));
   });
 
-  // Scatter notes around the center-ish area on load to avoid heavy overlap
+  // Scatter notes near the true viewport center with small jitter and minimal overlap
   function scatterNotes(){
     const notes = qsa('.note');
-    const n = notes.length;
-    if(!n) return;
-
-    const container = qs('.notes');
-    const cw = (container?.clientWidth) || window.innerWidth || 1200;
-    const ch = (container?.clientHeight) || (window.innerHeight - 100) || 700;
+    if(!notes.length) return;
+    const container = qs('.notes') || document.body;
+    const crect = container.getBoundingClientRect();
+    const cw = crect.width || container.clientWidth || window.innerWidth || 1200;
+    const ch = crect.height || container.clientHeight || window.innerHeight || 800;
     const centerX = cw / 2;
+    const centerY = ch / 2;
+    const viewportCX = (window.innerWidth || cw) / 2;
+    const viewportCY = (window.innerHeight || ch) / 2;
+    // offset to align container center with viewport center
+    const baseDx = Math.round(viewportCX - (crect.left + cw / 2));
+    const baseDy = Math.round(viewportCY - (crect.top + ch / 2));
 
-    // Determine baseline top in px when --y is 0
-    let baseTop = 0;
-    if (notes[0]) {
-      const prev = notes[0].style.getPropertyValue('--y');
-      notes[0].style.setProperty('--y', '0px');
-      baseTop = parseFloat(getComputedStyle(notes[0]).top) || 0;
-      if (prev) notes[0].style.setProperty('--y', prev);
-    }
-
-    const golden = Math.PI * (3 - Math.sqrt(5)); // ~2.399 rad
-    const startR = Math.max(80, Math.min(160, Math.min(cw, ch) * 0.18));
+    // two-pass search: tight cluster, then slightly wider ring for near non-overlap
+    const minDim = Math.min(window.innerWidth || cw, window.innerHeight || ch);
+    const r1 = Math.min(160, Math.floor(minDim * 0.14)); // near-center jitter
+    const r2 = Math.min(260, Math.floor(minDim * 0.22)); // fallback slightly wider
+    const margin = 32; // stronger spacing between notes
     const placed = [];
-    const margin = 12; // spacing between notes
+
+    const rectFor = (note, jx, jy) => {
+      const w = note.offsetWidth || note.getBoundingClientRect().width || 420;
+      const h = note.offsetHeight || note.getBoundingClientRect().height || 220;
+      const varX = baseDx + jx;
+      const varY = baseDy + jy;
+      const left = Math.round(centerX - w / 2 + varX);
+      const top = Math.round(centerY - h / 2 + varY);
+      return { left, top, right: left + w, bottom: top + h, varX, varY };
+    };
 
     const collides = (rect) => placed.some(p => !(
       rect.right + margin < p.left ||
@@ -123,35 +151,33 @@
       rect.top - margin > p.bottom
     ));
 
-    const rectFor = (note, x, y) => {
-      const w = note.offsetWidth || note.getBoundingClientRect().width || 300;
-      const h = note.offsetHeight || note.getBoundingClientRect().height || 180;
-      const left = Math.round(centerX + x - w / 2);
-      const top = Math.round(baseTop + y);
-      return { left, top, right: left + w, bottom: top + h, w, h };
-    };
-
-    notes.forEach((note, i) => {
-      const yBias = note.classList.contains('note-yellow') ? 200 : 0; // push yellow much further down
-      let k = 0;
-      let chosen = null;
-      while (k < 500) {
-        const ang = (i * 0.6 + k) * golden;
-        const r = startR + k * 8; // expand spiral
-        const x = Math.round(Math.cos(ang) * r);
-        const y0 = Math.round(Math.sin(ang) * r * 0.10 - 10); // very top-biased, minimal vertical amplitude
-        const y = y0 + yBias;
-        const rect = rectFor(note, x, y);
-        const inside = rect.left >= 16 && rect.right <= cw - 16 && rect.top >= 0 && rect.bottom <= ch - 16;
-        if (inside && !collides(rect)) { chosen = { x, y, rect }; break; }
-        k++;
+    notes.forEach(note => {
+      let choice = null;
+      // Pass 1: keep tight near center
+      for(let i=0; i<100; i++){
+        const dx = Math.round(rand(-r1, r1));
+        const dy = Math.round(rand(-r1, r1));
+        const rect = rectFor(note, dx, dy);
+        if(!collides(rect)) { choice = rect; break; }
       }
-      if (!chosen) { chosen = { x: 0, y: 8 + yBias, rect: rectFor(note, 0, 8 + yBias) }; }
-      note.style.setProperty('--x', chosen.x + 'px');
-      note.style.setProperty('--y', chosen.y + 'px');
-      const rot = (Math.random() * 2 - 1).toFixed(2); // keep slight rotation
-      note.style.setProperty('--r', rot + 'deg');
-      placed.push(chosen.rect);
+      // Pass 2: allow a bit wider but still centered cluster
+      if(!choice){
+        for(let i=0; i<160; i++){
+          const dx = Math.round(rand(-r2, r2));
+          const dy = Math.round(rand(-r2, r2));
+          const rect = rectFor(note, dx, dy);
+          if(!collides(rect)) { choice = rect; break; }
+        }
+      }
+      // Fallback: accept last tried position inside r1
+      if(!choice){
+        const dx = Math.round(rand(-r1, r1));
+        const dy = Math.round(rand(-r1, r1));
+        choice = rectFor(note, dx, dy);
+      }
+      setVarXY(note, choice.varX, choice.varY);
+      note.style.setProperty('--r', (Math.random() * 1 - 0.5).toFixed(2) + 'deg');
+      placed.push(choice);
     });
   }
 
@@ -169,40 +195,7 @@
     if(e.key === 'ArrowDown'){ active.style.setProperty('--y', (y + step) + 'px'); e.preventDefault(); }
   });
 
-  // Persistence of positions and open state
-  const LS_KEY = 'desktop-positions-v1';
-  const LS_OPEN = 'desktop-open-v1';
-  function persistPosition(el){
-    const id = el.id || el.dataset.persistId;
-    if(!id) return;
-    const cs = getComputedStyle(el);
-    const x = cs.getPropertyValue('--x');
-    const y = cs.getPropertyValue('--y');
-    const map = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-    map[id] = { x, y };
-    localStorage.setItem(LS_KEY, JSON.stringify(map));
-  }
-  function applyPositions(){
-    const map = JSON.parse(localStorage.getItem(LS_KEY)||'{}');
-    [...qsa('.note'), ...qsa('.window')].forEach(el => {
-      const id = el.id || el.dataset.persistId;
-      if(id && map[id]){
-        el.style.setProperty('--x', map[id].x);
-        el.style.setProperty('--y', map[id].y);
-      }
-    });
-  }
-  function saveOpenState(id, isOpen){
-    const map = JSON.parse(localStorage.getItem(LS_OPEN)||'{}');
-    map[id] = isOpen;
-    localStorage.setItem(LS_OPEN, JSON.stringify(map));
-  }
-  function applyOpenState(){
-    const map = JSON.parse(localStorage.getItem(LS_OPEN)||'{}');
-    qsa('.window').forEach(w => {
-      if(map[w.id]) w.hidden = false;
-    });
-  }
+  // (Simplified) No persistence or open state tracking
 
   // Dynamic data rendering for Projects and Experience
   function renderFeedList(listEl, items){
@@ -262,13 +255,6 @@
 
   // Initial state
   scatterNotes();
-  applyPositions();
-  resolveAllNotes();
-  applyOpenState();
   loadData();
 
-  // Keep notes non-overlapping on resize
-  window.addEventListener('resize', debounce(() => {
-    resolveAllNotes();
-  }, 180));
 })();
