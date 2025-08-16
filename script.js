@@ -197,6 +197,23 @@
 
   // (Simplified) No persistence or open state tracking
 
+  // About dock icon: toggle between two PNGs every 1s
+  function startAboutIconBlink(){
+    const img = qs('.dock-item[data-open="win-about"] .icon img');
+    if(!img) return;
+    const frames = [
+      'Images/icons/suprise.png',
+      'Images/icons/laugh.png'
+    ];
+    // Preload frames to avoid flicker
+    frames.forEach(src => { const i = new Image(); i.src = src; });
+    let idx = 0;
+    setInterval(() => {
+      idx = (idx + 1) % frames.length;
+      img.src = frames[idx];
+    }, 1000);
+  }
+
   // Dynamic data rendering for Projects and Experience
   function renderFeedList(listEl, items){
     if(!listEl) return;
@@ -256,5 +273,6 @@
   // Initial state
   scatterNotes();
   loadData();
+  startAboutIconBlink();
 
 })();

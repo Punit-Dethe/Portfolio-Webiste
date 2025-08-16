@@ -55,6 +55,8 @@ body {
 .left-dock .dock-item { border: none; background: transparent; padding: 0; font: inherit; }
 .dock-item .icon { width: 64px; height: 64px; filter: drop-shadow(0 2px 0 #000); }
 .dock-item svg { width: 64px; height: 64px; image-rendering: pixelated; shape-rendering: crispEdges; }
+/* Ensure PNG icons render at the same size/style as SVG */
+.dock-item img { width: 64px; height: 64px; image-rendering: pixelated; display: block; }
 .pill {
   background: #a9d0ff;
   color: #000;
