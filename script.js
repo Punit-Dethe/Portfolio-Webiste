@@ -28,8 +28,9 @@
     const crect = container.getBoundingClientRect();
     const cw = crect.width || container.clientWidth || window.innerWidth || 1200;
     const ch = crect.height || container.clientHeight || window.innerHeight || 800;
-    const hJitter = 120; // stronger left/right jitter in px
-    const vUp = 120;     // push further above center
+    const isMobile = window.innerWidth <= 900;
+    const hJitter = isMobile ? 10 : 120; // stronger left/right jitter in px on desktop
+    const vUp = isMobile ? 60 : 120;     // push further above center
     const vJitter = 12;  // small vertical jitter
     const jx = Math.round(rand(-hJitter, hJitter));
     const jy = -vUp + Math.round(rand(-vJitter, vJitter));
@@ -144,12 +145,15 @@
       return { left, top, right: left + w, bottom: top + h, varX, varY };
     };
 
-    const collides = (rect) => placed.some(p => !(
-      rect.right + margin < p.left ||
-      rect.left - margin > p.right ||
-      rect.bottom + margin < p.top ||
-      rect.top - margin > p.bottom
-    ));
+    const collides = (rect) => {
+      if (window.innerWidth <= 900) return false; // Allow stack overlap on mobile
+      return placed.some(p => !(
+        rect.right + margin < p.left ||
+        rect.left - margin > p.right ||
+        rect.bottom + margin < p.top ||
+        rect.top - margin > p.bottom
+      ));
+    };
 
     notes.forEach(note => {
       let choice = null;
@@ -234,6 +238,17 @@
         s.textContent = t;
         meta.appendChild(s);
       });
+      if (item.link) {
+        const action = document.createElement('div');
+        action.className = 'action';
+        const a = document.createElement('a');
+        a.href = item.link;
+        a.target = '_blank';
+        a.className = 'btn';
+        a.textContent = 'View Project';
+        action.appendChild(a);
+        li.querySelector('.info').appendChild(action);
+      }
       frag.appendChild(li);
     });
     listEl.innerHTML = '';
@@ -250,13 +265,13 @@
   async function loadData(){
     const defaults = {
       projects: [
-        { title: 'Smart Slide Browser', tags: ['Project','Student','Slides','Search'] },
-        { title: 'AI Menu System', tags: ['AI/ML','Prototype','Computer Vision'] }
+        { title: 'Smart Slide Browser', tags: ['Project','Student','Slides','Search'], link: 'https://github.com/Punit-Dethe/SideSurf_Side_Browser' },
+        { title: 'AI Menu System', tags: ['AI/ML','Prototype','Computer Vision'], link: 'https://github.com/Punit-Dethe/Intuition-Eats' }
       ],
       experience: [
-        { title: 'Machine Learning Intern • Dates TBD', tags: ['Internship','AI/ML'] },
-        { title: 'Full Stack Developer • Dates TBD', tags: ['Web','Backend+Frontend'] },
-        { title: 'Web Developer • Dates TBD', tags: ['Frontend','HTML/CSS/JS'] }
+        { title: 'Intern at Triply', tags: ['Internship', 'Design', 'Development', 'Deployment'] },
+        { title: 'Developer at PRANA Foundation', tags: ['NGO', 'In Development', 'Accessibility'] },
+        { title: 'Freelance Full Stack Developer', tags: ['Freelancing', 'Full Stack', 'Web'] }
       ]
     };
     try {
@@ -269,6 +284,23 @@
       renderFromData(defaults);
     }
   }
+
+  // Tab Switching logic for About Window
+  qsa('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deactivate all
+      qsa('.tab-btn').forEach(b => b.classList.remove('active'));
+      qsa('.tab-content').forEach(c => c.style.display = 'none');
+      
+      // Activate clicked
+      btn.classList.add('active');
+      const targetId = 'tab-' + btn.getAttribute('data-tab');
+      const targetContent = qs('#' + targetId);
+      if(targetContent) {
+        targetContent.style.display = 'block';
+      }
+    });
+  });
 
   // Initial state
   scatterNotes();

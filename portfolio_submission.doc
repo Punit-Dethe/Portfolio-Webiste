@@ -1,0 +1,56 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head><title>E-Portfolio Submission: Professional Skills</title></head>
+<body>
+<h1 align="center"><b>E-Portfolio Submission: Professional Skills</b></h1>
+
+<div align="center">
+Vidyalankar Institute of Technology<br>
+Department of Computer Engineering<br>
+<br>
+</div>
+<b>Student Details:</b><br>
+<br>
+<b>Name:</b> Punit Dethe<br>
+<b>Program:</b> B.E. Computer Engineering<br>
+<b>Roll Number / ID:</b> [Insert Your Roll Number Here]<br>
+<b>Subject:</b> Professional Skills<br>
+<b>Date of Submission:</b> March 10, 2026<br>
+
+<hr>
+
+<h3><b>1. Portfolio Links</b></h3>
+<p>Below are the links to access my live e-portfolio and the underlying source code:</p>
+
+<p><b>Live Website:</b> <a href="https://punitdethe.vercel.app/">https://punitdethe.vercel.app/</a><br>
+<b>GitHub Repository:</b> <a href="https://github.com/Punit-Dethe/Portfolio-Webiste">https://github.com/Punit-Dethe/Portfolio-Webiste</a></p>
+
+<hr>
+
+<h3><b>2. Project Overview & Tech Stack</b></h3>
+<p>This e-portfolio was developed to showcase my academic projects, technical skills, and professional experience through a creative, interactive desktop-style UI.</p>
+
+<p><b>Technologies Used:</b></p>
+<ul>
+<li><b>Frontend:</b> HTML5, CSS3, Vanilla JavaScript</li>
+<li><b>Version Control & Deployment:</b> Git, GitHub, Vercel</li>
+<li><b>Tools:</b> Visual Studio Code</li>
+</ul>
+
+<hr>
+
+<h3><b>3. Website Previews</b></h3>
+
+<p><i>(Professor's Note: Screenshots are provided below to demonstrate the website's layout and functionality as of the submission date.)</i></p>
+
+<p><i>[Insert Screenshot 1 Here]</i><br>
+<b>Caption: Home / Hero Section</b></p>
+<br><br>
+
+<p><i>[Insert Screenshot 2 Here]</i><br>
+<b>Caption: Projects / Skills Section</b></p>
+<br><br>
+
+<p><i>[Insert Screenshot 3 Here]</i><br>
+<b>Caption: Contact / Resume Section</b></p>
+
+</body></html>

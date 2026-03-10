@@ -2,25 +2,27 @@
   "projects": [
     {
       "title": "Smart Slide Browser",
-      "tags": ["Project", "Student", "Slides", "Search"]
+      "tags": ["Project", "Student", "Slides", "Search"],
+      "link": "https://github.com/Punit-Dethe/SideSurf_Side_Browser"
     },
     {
       "title": "AI Menu System",
-      "tags": ["AI/ML", "Prototype", "Computer Vision"]
+      "tags": ["AI/ML", "Prototype", "Computer Vision"],
+      "link": "https://github.com/Punit-Dethe/Intuition-Eats"
     }
   ],
   "experience": [
     {
-      "title": "Machine Learning Intern",
-      "tags": ["Internship", "AI/ML", "Dates TBD"]
+      "title": "Intern at Triply",
+      "tags": ["Internship", "Design", "Development", "Deployment"]
     },
     {
-      "title": "Full Stack Developer",
-      "tags": ["Web", "Backend+Frontend", "Dates TBD"]
+      "title": "Developer at PRANA Foundation",
+      "tags": ["NGO", "In Development", "Accessibility"]
     },
     {
-      "title": "Web Developer",
-      "tags": ["Frontend", "HTML/CSS/JS", "Dates TBD"]
+      "title": "Freelance Full Stack Developer",
+      "tags": ["Freelancing", "Full Stack", "Web"]
     }
   ]
 }
