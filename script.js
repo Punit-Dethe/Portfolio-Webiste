@@ -1,118 +1,116 @@
-// Desktop-like interactions: draggable windows and notes, dock actions
+// Desktop-like interactions: draggable windows and notes, dock actions, and small UX polish.
 (function(){
   const qs = (s, r=document) => r.querySelector(s);
   const qsa = (s, r=document) => Array.from(r.querySelectorAll(s));
-  const getVarXY = (el) => {
-    const cs = getComputedStyle(el);
-    return [parseFloat(cs.getPropertyValue('--x')||'0'), parseFloat(cs.getPropertyValue('--y')||'0')];
-  };
   const setVarXY = (el, x, y) => {
     el.style.setProperty('--x', x + 'px');
     el.style.setProperty('--y', y + 'px');
   };
-  const debounce = (fn, ms = 150) => {
-    let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-  };
 
-  // Z-index manager
-  let zTop = 10;
+  let zTop = 20;
   const bringToFront = (el) => { el.style.zIndex = ++zTop; };
-
-  // Simple helpers
   const rand = (min, max) => Math.random() * (max - min) + min;
 
-  // Place a window near the center of its container (.windows) with light jitter
+  function syncDockState(){
+    qsa('.dock-item[data-open]').forEach(btn => {
+      const win = qs('#' + btn.getAttribute('data-open'));
+      const open = Boolean(win && !win.hidden);
+      btn.classList.toggle('is-open', open);
+      btn.setAttribute('aria-pressed', String(open));
+    });
+  }
+
   function placeWindowNearCenter(w){
+    if (window.innerWidth <= 900) {
+      setVarXY(w, 0, 0);
+      return;
+    }
     const container = qs('.windows') || document.body;
     const crect = container.getBoundingClientRect();
     const cw = crect.width || container.clientWidth || window.innerWidth || 1200;
     const ch = crect.height || container.clientHeight || window.innerHeight || 800;
-    const isMobile = window.innerWidth <= 900;
-    const hJitter = isMobile ? 10 : 120; // stronger left/right jitter in px on desktop
-    const vUp = isMobile ? 60 : 120;     // push further above center
-    const vJitter = 12;  // small vertical jitter
-    const jx = Math.round(rand(-hJitter, hJitter));
-    const jy = -vUp + Math.round(rand(-vJitter, vJitter));
+    const jx = Math.round(rand(-110, 110));
+    const jy = -105 + Math.round(rand(-14, 14));
     const viewportCX = (window.innerWidth || cw) / 2;
     const viewportCY = (window.innerHeight || ch) / 2;
-    // var(--x), var(--y) are offsets from container center (CSS uses top: 50% and translate(-50%, -50%))
-    const varX = Math.round(viewportCX - (crect.left + cw / 2) + jx);
-    const varY = Math.round(viewportCY - (crect.top + ch / 2) + jy);
-    setVarXY(w, varX, varY);
+    setVarXY(
+      w,
+      Math.round(viewportCX - (crect.left + cw / 2) + jx),
+      Math.round(viewportCY - (crect.top + ch / 2) + jy)
+    );
   }
 
-  // Generic drag using CSS custom props --x and --y
   function makeDraggable(target, handle){
     const h = handle || target;
     let startX = 0, startY = 0, baseX = 0, baseY = 0;
     const get = () => {
       const cs = getComputedStyle(target);
-      return [parseFloat(cs.getPropertyValue('--x')||'0'), parseFloat(cs.getPropertyValue('--y')||'0')];
+      return [parseFloat(cs.getPropertyValue('--x') || '0'), parseFloat(cs.getPropertyValue('--y') || '0')];
     };
     const down = (e) => {
-      if(e.button !== 0 && e.pointerType !== 'touch') return; // primary only
-      // Do not start drag when interacting with controls/links/inputs inside the handle
+      if (window.innerWidth <= 900 && target.classList.contains('window')) return;
+      if(e.button !== 0 && e.pointerType !== 'touch') return;
       if (e.target.closest('.control') || e.target.closest('button, a, input, textarea, select, [role="button"]')) return;
       bringToFront(target);
       target.focus?.();
-      const [x, y] = get();
-      baseX = x; baseY = y; startX = e.clientX; startY = e.clientY;
-      h.setPointerCapture(e.pointerId);
+      [baseX, baseY] = get();
+      startX = e.clientX;
+      startY = e.clientY;
+      h.setPointerCapture?.(e.pointerId);
+      target.classList.add('is-dragging');
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up, { once: true });
     };
     const move = (e) => {
-      const dx = e.clientX - startX; const dy = e.clientY - startY;
-      target.style.setProperty('--x', (baseX + dx) + 'px');
-      target.style.setProperty('--y', (baseY + dy) + 'px');
+      setVarXY(target, baseX + e.clientX - startX, baseY + e.clientY - startY);
     };
     const up = () => {
+      target.classList.remove('is-dragging');
       window.removeEventListener('pointermove', move);
     };
     h.addEventListener('pointerdown', down);
   }
 
-  // Windows
   const windows = qsa('.window');
   windows.forEach(w => {
     const handle = qs('.drag-handle', w) || w;
     makeDraggable(w, handle);
     w.addEventListener('mousedown', () => bringToFront(w));
 
-    const closeBtn = qs('.control.close', w);
-    const minBtn = qs('.control.minimize', w);
-    closeBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.hidden = true; });
-    minBtn?.addEventListener('click', (e) => { e.stopPropagation(); w.classList.toggle('minimized'); });
-    handle?.addEventListener('dblclick', () => w.classList.toggle('minimized'));
-
-    // If visible on load, drop it near center
-    if (!w.hidden) placeWindowNearCenter(w);
-  });
-
-  // Dock actions
-  qsa('.dock-item[data-open]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-open');
-      const win = qs('#' + id);
-      if(!win) return;
-      win.hidden = false;
-      bringToFront(win);
-      win.classList.remove('minimized');
-      placeWindowNearCenter(win);
-      win.focus();
+    qs('.control.close', w)?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      w.hidden = true;
+      syncDockState();
+    });
+    qs('.control.minimize', w)?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      w.classList.toggle('minimized');
+    });
+    handle?.addEventListener('dblclick', (e) => {
+      if (e.target.closest('.control')) return;
+      w.classList.toggle('minimized');
     });
   });
 
-  // Notes: drag via header bar if present, else whole note
+  qsa('.dock-item[data-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const win = qs('#' + btn.getAttribute('data-open'));
+      if(!win) return;
+      const wasHidden = win.hidden;
+      win.hidden = false;
+      win.classList.remove('minimized');
+      bringToFront(win);
+      if (wasHidden) placeWindowNearCenter(win);
+      win.focus();
+      syncDockState();
+    });
+  });
+
   qsa('.note').forEach(note => {
-    const bar = qs('.note-bar', note) || note;
-    makeDraggable(note, bar);
-    // Bring to front only on click (like windows), not on hover
+    makeDraggable(note, qs('.note-bar', note) || note);
     note.addEventListener('mousedown', () => bringToFront(note));
   });
 
-  // Scatter notes near the true viewport center with small jitter and minimal overlap
   function scatterNotes(){
     const notes = qsa('.note');
     if(!notes.length) return;
@@ -124,15 +122,12 @@
     const centerY = ch / 2;
     const viewportCX = (window.innerWidth || cw) / 2;
     const viewportCY = (window.innerHeight || ch) / 2;
-    // offset to align container center with viewport center
     const baseDx = Math.round(viewportCX - (crect.left + cw / 2));
     const baseDy = Math.round(viewportCY - (crect.top + ch / 2));
-
-    // two-pass search: tight cluster, then slightly wider ring for near non-overlap
     const minDim = Math.min(window.innerWidth || cw, window.innerHeight || ch);
-    const r1 = Math.min(160, Math.floor(minDim * 0.14)); // near-center jitter
-    const r2 = Math.min(260, Math.floor(minDim * 0.22)); // fallback slightly wider
-    const margin = 32; // stronger spacing between notes
+    const r1 = Math.min(150, Math.floor(minDim * 0.14));
+    const r2 = Math.min(250, Math.floor(minDim * 0.22));
+    const margin = 26;
     const placed = [];
 
     const rectFor = (note, jx, jy) => {
@@ -146,7 +141,7 @@
     };
 
     const collides = (rect) => {
-      if (window.innerWidth <= 900) return false; // Allow stack overlap on mobile
+      if (window.innerWidth <= 900) return false;
       return placed.some(p => !(
         rect.right + margin < p.left ||
         rect.left - margin > p.right ||
@@ -157,95 +152,58 @@
 
     notes.forEach(note => {
       let choice = null;
-      // Pass 1: keep tight near center
-      for(let i=0; i<100; i++){
-        const dx = Math.round(rand(-r1, r1));
-        const dy = Math.round(rand(-r1, r1));
-        const rect = rectFor(note, dx, dy);
+      for(let i=0; i<90; i++){
+        const rect = rectFor(note, Math.round(rand(-r1, r1)), Math.round(rand(-r1, r1)));
         if(!collides(rect)) { choice = rect; break; }
       }
-      // Pass 2: allow a bit wider but still centered cluster
       if(!choice){
-        for(let i=0; i<160; i++){
-          const dx = Math.round(rand(-r2, r2));
-          const dy = Math.round(rand(-r2, r2));
-          const rect = rectFor(note, dx, dy);
+        for(let i=0; i<140; i++){
+          const rect = rectFor(note, Math.round(rand(-r2, r2)), Math.round(rand(-r2, r2)));
           if(!collides(rect)) { choice = rect; break; }
         }
       }
-      // Fallback: accept last tried position inside r1
-      if(!choice){
-        const dx = Math.round(rand(-r1, r1));
-        const dy = Math.round(rand(-r1, r1));
-        choice = rectFor(note, dx, dy);
-      }
+      if(!choice) choice = rectFor(note, Math.round(rand(-r1, r1)), Math.round(rand(-r1, r1)));
       setVarXY(note, choice.varX, choice.varY);
-      note.style.setProperty('--r', (Math.random() * 1 - 0.5).toFixed(2) + 'deg');
+      note.style.setProperty('--r', (Math.random() * 1.2 - 0.6).toFixed(2) + 'deg');
       placed.push(choice);
     });
   }
 
-  // Keyboard nudge for focused note or window
-  document.addEventListener('keydown', (e) => {
-    const active = document.activeElement?.closest?.('.note, .window');
-    if(!active) return;
-    const step = e.shiftKey ? 12 : 4;
-    const cs = getComputedStyle(active);
-    const x = parseFloat(cs.getPropertyValue('--x')||'0');
-    const y = parseFloat(cs.getPropertyValue('--y')||'0');
-    if(e.key === 'ArrowLeft'){ active.style.setProperty('--x', (x - step) + 'px'); e.preventDefault(); }
-    if(e.key === 'ArrowRight'){ active.style.setProperty('--x', (x + step) + 'px'); e.preventDefault(); }
-    if(e.key === 'ArrowUp'){ active.style.setProperty('--y', (y - step) + 'px'); e.preventDefault(); }
-    if(e.key === 'ArrowDown'){ active.style.setProperty('--y', (y + step) + 'px'); e.preventDefault(); }
-  });
-
-  // (Simplified) No persistence or open state tracking
-
-  // About dock icon: toggle between two PNGs every 1s
-  function startAboutIconBlink(){
-    const img = qs('.dock-item[data-open="win-about"] .icon img');
-    if(!img) return;
-    const frames = [
-      'Images/icons/suprise.png',
-      'Images/icons/laugh.png'
-    ];
-    // Preload frames to avoid flicker
-    frames.forEach(src => { const i = new Image(); i.src = src; });
-    let idx = 0;
-    setInterval(() => {
-      idx = (idx + 1) % frames.length;
-      img.src = frames[idx];
-    }, 1000);
-  }
-
-  // Dynamic data rendering for Projects and Experience
   function renderFeedList(listEl, items){
     if(!listEl) return;
     const frag = document.createDocumentFragment();
-    items.forEach(item => {
+    items.forEach((item, index) => {
       const li = document.createElement('li');
       li.className = 'feed-item';
       li.innerHTML = `
-        <div class="thumb" aria-hidden="true"></div>
+        <div class="thumb thumb-${index % 4}" aria-hidden="true"><span></span></div>
         <div class="info">
           <h3 class="title"></h3>
           <div class="meta"></div>
         </div>`;
       li.querySelector('.title').textContent = item.title || '';
+      li.querySelector('.thumb span').textContent = String(index + 1).padStart(2, '0');
       const meta = li.querySelector('.meta');
-      (item.tags||[]).forEach(t => {
+      (item.tags || []).forEach(t => {
         const s = document.createElement('span');
         s.textContent = t;
         meta.appendChild(s);
       });
+      if (item.description) {
+        const p = document.createElement('p');
+        p.className = 'feed-description';
+        p.textContent = item.description;
+        li.querySelector('.info').appendChild(p);
+      }
       if (item.link) {
         const action = document.createElement('div');
         action.className = 'action';
         const a = document.createElement('a');
         a.href = item.link;
         a.target = '_blank';
+        a.rel = 'noreferrer';
         a.className = 'btn';
-        a.textContent = 'View Project';
+        a.textContent = 'Open project ↗';
         action.appendChild(a);
         li.querySelector('.info').appendChild(action);
       }
@@ -256,10 +214,8 @@
   }
 
   function renderFromData(data){
-    const projList = qs('#win-projects .feed-list');
-    const expList = qs('#win-experience .feed-list');
-    if(data?.projects) renderFeedList(projList, data.projects);
-    if(data?.experience) renderFeedList(expList, data.experience);
+    if(data?.projects) renderFeedList(qs('#win-projects .feed-list'), data.projects);
+    if(data?.experience) renderFeedList(qs('#win-experience .feed-list'), data.experience);
   }
 
   async function loadData(){
@@ -269,42 +225,102 @@
         { title: 'AI Menu System', tags: ['AI/ML','Prototype','Computer Vision'], link: 'https://github.com/Punit-Dethe/Intuition-Eats' }
       ],
       experience: [
-        { title: 'Intern at Triply', tags: ['Internship', 'Design', 'Development', 'Deployment'] },
-        { title: 'Developer at PRANA Foundation', tags: ['NGO', 'In Development', 'Accessibility'] },
-        { title: 'Freelance Full Stack Developer', tags: ['Freelancing', 'Full Stack', 'Web'] }
+        { title: 'Intern at Triply', tags: ['Internship','Design','Development','Deployment'] },
+        { title: 'Developer at PRANA Foundation', tags: ['NGO','In Development','Accessibility'] },
+        { title: 'Freelance Full Stack Developer', tags: ['Freelancing','Full Stack','Web'] }
       ]
     };
     try {
       const res = await fetch('./data.json', { cache: 'no-store' });
       if(!res.ok) throw new Error('Failed to load data.json');
-      const data = await res.json();
-      renderFromData(data);
+      renderFromData(await res.json());
     } catch (err){
-      // Likely opened from file:// or no data.json; fallback to defaults
       renderFromData(defaults);
     }
   }
 
-  // Tab Switching logic for About Window
+  function startAboutIconBlink(){
+    const img = qs('.dock-item[data-open="win-about"] .icon img');
+    if(!img || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const frames = ['Images/icons/suprise.png', 'Images/icons/laugh.png'];
+    frames.forEach(src => { const i = new Image(); i.src = src; });
+    let idx = 0;
+    setInterval(() => {
+      idx = (idx + 1) % frames.length;
+      img.src = frames[idx];
+    }, 1400);
+  }
+
+  function polishChrome(){
+    const social = qs('.social');
+    if (social) {
+      social.innerHTML = `
+        <a href="https://github.com/Punit-Dethe" target="_blank" rel="noreferrer" aria-label="GitHub">GitHub ↗</a>
+        <a href="https://www.linkedin.com/in/punit-dethe-32447b331/" target="_blank" rel="noreferrer" aria-label="LinkedIn">LinkedIn ↗</a>
+        <a href="mailto:punitdethe2006@gmail.com" aria-label="Email">Email</a>`;
+    }
+
+    const brand = qs('.brand');
+    if (brand && !qs('.brand-role', brand)) {
+      const role = document.createElement('span');
+      role.className = 'brand-role';
+      role.textContent = 'developer / builder';
+      brand.appendChild(role);
+    }
+
+    const board = qs('.board');
+    if (board && !qs('.desktop-tip')) {
+      const tip = document.createElement('div');
+      tip.className = 'desktop-tip';
+      tip.innerHTML = '<strong>Explore the desktop</strong><span>Open an icon • drag a window • press Esc to close</span>';
+      board.appendChild(tip);
+    }
+
+    const resumeLink = qs('#win-resume a[href="#"]');
+    if (resumeLink) {
+      resumeLink.removeAttribute('download');
+      resumeLink.href = 'mailto:punitdethe2006@gmail.com?subject=Resume%20request';
+      resumeLink.textContent = 'Request resume by email →';
+      resumeLink.classList.add('btn');
+    }
+  }
+
   qsa('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Deactivate all
       qsa('.tab-btn').forEach(b => b.classList.remove('active'));
       qsa('.tab-content').forEach(c => c.style.display = 'none');
-      
-      // Activate clicked
       btn.classList.add('active');
-      const targetId = 'tab-' + btn.getAttribute('data-tab');
-      const targetContent = qs('#' + targetId);
-      if(targetContent) {
-        targetContent.style.display = 'block';
-      }
+      const targetContent = qs('#tab-' + btn.getAttribute('data-tab'));
+      if(targetContent) targetContent.style.display = 'block';
     });
   });
 
-  // Initial state
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const open = windows.filter(w => !w.hidden).sort((a, b) => (+b.style.zIndex || 0) - (+a.style.zIndex || 0));
+      if (open[0]) {
+        open[0].hidden = true;
+        syncDockState();
+        e.preventDefault();
+      }
+      return;
+    }
+
+    const active = document.activeElement?.closest?.('.note, .window');
+    if(!active || window.innerWidth <= 900) return;
+    const step = e.shiftKey ? 12 : 4;
+    const cs = getComputedStyle(active);
+    const x = parseFloat(cs.getPropertyValue('--x') || '0');
+    const y = parseFloat(cs.getPropertyValue('--y') || '0');
+    if(e.key === 'ArrowLeft'){ setVarXY(active, x - step, y); e.preventDefault(); }
+    if(e.key === 'ArrowRight'){ setVarXY(active, x + step, y); e.preventDefault(); }
+    if(e.key === 'ArrowUp'){ setVarXY(active, x, y - step); e.preventDefault(); }
+    if(e.key === 'ArrowDown'){ setVarXY(active, x, y + step); e.preventDefault(); }
+  });
+
+  polishChrome();
   scatterNotes();
   loadData();
   startAboutIconBlink();
-
+  syncDockState();
 })();
