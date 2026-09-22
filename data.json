@@ -1,28 +1,39 @@
 {
   "projects": [
     {
+      "title": "Grain",
+      "tags": ["Open Source", "Speech-to-Text", "Desktop", "AI"],
+      "description": "A voice operating layer for desktop: local-first dictation, Flow transcription, AI rewriting, context awareness, snippets, and agent workflows.",
+      "link": "https://github.com/Punit-Dethe/Grain"
+    },
+    {
       "title": "Smart Slide Browser",
       "tags": ["Project", "Student", "Slides", "Search"],
+      "description": "An experimental side-browser interface focused on finding and navigating useful information without losing your current context.",
       "link": "https://github.com/Punit-Dethe/SideSurf_Side_Browser"
     },
     {
       "title": "AI Menu System",
       "tags": ["AI/ML", "Prototype", "Computer Vision"],
+      "description": "A prototype exploring how AI and computer vision can make menu discovery and food selection more interactive.",
       "link": "https://github.com/Punit-Dethe/Intuition-Eats"
     }
   ],
   "experience": [
     {
       "title": "Intern at Triply",
-      "tags": ["Internship", "Design", "Development", "Deployment"]
+      "tags": ["Internship", "Design", "Development", "Deployment"],
+      "description": "Worked across product design, implementation, and deployment rather than staying inside a single layer of the stack."
     },
     {
       "title": "Developer at PRANA Foundation",
-      "tags": ["NGO", "In Development", "Accessibility"]
+      "tags": ["NGO", "In Development", "Accessibility"],
+      "description": "Building web experiences for a nonprofit environment with accessibility and clarity as core constraints."
     },
     {
       "title": "Freelance Full Stack Developer",
-      "tags": ["Freelancing", "Full Stack", "Web"]
+      "tags": ["Freelancing", "Full Stack", "Web"],
+      "description": "Designing and shipping full-stack web work from interface decisions through implementation and delivery."
     }
   ]
 }
