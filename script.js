@@ -138,7 +138,9 @@
   });
 
   qsa('.note').forEach(note => {
-    makeDraggable(note, qs('.note-bar', note) || note);
+    // The three opening cards can be grabbed from anywhere on the card. Interactive
+    // children (links/buttons) are still excluded by makeDraggable so they remain clickable.
+    makeDraggable(note, note);
     note.addEventListener('mousedown', () => bringToFront(note));
   });
 
