@@ -7,6 +7,24 @@
     el.style.setProperty('--y', y + 'px');
   };
 
+  // The polished mobile layout pins windows near the top of the viewport. Keep that
+  // layout, but let the same --x/--y variables used by desktop dragging offset it.
+  // This intentionally comes after styles.css so it can override the mobile !important
+  // transform that previously made window dragging appear broken.
+  const dragStyle = document.createElement('style');
+  dragStyle.textContent = `
+    @media (max-width: 900px) {
+      .window {
+        left: 50% !important;
+        top: 10px !important;
+        transform: translate(calc(-50% + var(--x, 0px)), var(--y, 0px)) !important;
+      }
+      .drag-handle { cursor: grab !important; touch-action: none; }
+      .window.is-dragging .drag-handle { cursor: grabbing !important; }
+    }
+  `;
+  document.head.appendChild(dragStyle);
+
   let zTop = 20;
   const bringToFront = (el) => { el.style.zIndex = ++zTop; };
   const rand = (min, max) => Math.random() * (max - min) + min;
@@ -43,12 +61,28 @@
   function makeDraggable(target, handle){
     const h = handle || target;
     let startX = 0, startY = 0, baseX = 0, baseY = 0;
+    let activePointerId = null;
+
     const get = () => {
       const cs = getComputedStyle(target);
       return [parseFloat(cs.getPropertyValue('--x') || '0'), parseFloat(cs.getPropertyValue('--y') || '0')];
     };
+
+    const move = (e) => {
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
+      setVarXY(target, baseX + e.clientX - startX, baseY + e.clientY - startY);
+    };
+
+    const up = (e) => {
+      if (activePointerId !== null && e?.pointerId != null && e.pointerId !== activePointerId) return;
+      target.classList.remove('is-dragging');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      activePointerId = null;
+    };
+
     const down = (e) => {
-      if (window.innerWidth <= 900 && target.classList.contains('window')) return;
       if(e.button !== 0 && e.pointerType !== 'touch') return;
       if (e.target.closest('.control') || e.target.closest('button, a, input, textarea, select, [role="button"]')) return;
       bringToFront(target);
@@ -56,18 +90,15 @@
       [baseX, baseY] = get();
       startX = e.clientX;
       startY = e.clientY;
+      activePointerId = e.pointerId;
       h.setPointerCapture?.(e.pointerId);
       target.classList.add('is-dragging');
       window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up, { once: true });
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+      e.preventDefault();
     };
-    const move = (e) => {
-      setVarXY(target, baseX + e.clientX - startX, baseY + e.clientY - startY);
-    };
-    const up = () => {
-      target.classList.remove('is-dragging');
-      window.removeEventListener('pointermove', move);
-    };
+
     h.addEventListener('pointerdown', down);
   }
 
